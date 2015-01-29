@@ -45,6 +45,12 @@
       [(null? (cdr (children tree))) `()]
       [else (car (cdr (children tree)))])))
 
+(define size
+  (lambda (tree)
+    (cond
+      [(null? tree) 0]
+      [else (+ 1 (size (left-child tree)) (size (right-child tree)))])))
+
 (define traversal
   (lambda (tree)
     (cond
@@ -52,12 +58,28 @@
       [else
        (cons (get-node tree) (list (pre-order-traversal (left-child tree)) (pre-order-traversal (right-child tree))))])))
 
-(define pre-order-traversal
+;Find the k-th biggest element in the bst
+(define find-kth-biggest-ele
+  (lambda (tree k)
+    (call/cc
+      (lambda (call-cc)
+        (letrec ([repeat-find
+                  (lambda (tree)
+                    (cond
+                      [(null? tree) `()]
+                      [else 
+                       (begin
+                        (repeat-find (right-child tree))
+                        (if (= k 1) (call-cc (get-key tree)) (set! k (sub1 k)))
+                        (repeat-find (left-child tree)))]))])
+          (repeat-find tree))))))
+
+(define in-order-traversal
   (lambda (tree)
     (cond
       [(null? tree) `()]
       [else
-       (list (get-node tree) (pre-order-traversal (left-child tree)) (pre-order-traversal (right-child tree)))])))
+       (list (in-order-traversal (left-child tree)) (get-node tree) (in-order-traversal (right-child tree)))])))
 
 (define get-first-ele-inorder-traversal
   (lambda (tree)
