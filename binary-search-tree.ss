@@ -51,6 +51,16 @@
       [(null? tree) 0]
       [else (+ 1 (size (left-child tree)) (size (right-child tree)))])))
 
+(define maxDepth
+  (lambda (tree)
+    (cond
+      [(null? tree) 0]
+      [else (let ([left-max-depth (maxDepth (left-child tree))]
+                  [right-max-depth (maxDepth (right-child tree))])
+              (if (> left-max-depth right-max-depth)
+                  (+ 1 left-max-depth)
+                  (+ 1 right-max-depth)))])))
+
 (define traversal
   (lambda (tree)
     (cond
