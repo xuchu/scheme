@@ -42,19 +42,19 @@
       (2-dime-cross-product (list (car lst1) (second lst1))
                             (list (car lst2) (second lst2))))))
 
-(define multiply-num-on-vector
+(define multiply-num-on-list
   (lambda (num vec)
     (cond
       [(null? vec) `()]
-      [else (cons (* num (car vec)) (multiply-num-on-vector num (cdr vec)))])))
+      [else (cons (* num (car vec)) (multiply-num-on-list num (cdr vec)))])))
 
-(define add-two-vectors
+(define add-two-lists
   (lambda (vec1 vec2)
     (cond
       [(and (null? vec1) (null? vec2)) `()]
       [(null? vec1) vec2]
       [(null? vec2) vec1]
-      [else (cons (+ (car vec1) (car vec2)) (add-two-vectors (cdr vec1) (cdr vec2)))])))
+      [else (cons (+ (car vec1) (car vec2)) (add-two-lists (cdr vec1) (cdr vec2)))])))
 
 ; (string-join `("a" "b") " ") => "a b "
 (define string-join
@@ -73,35 +73,32 @@
 ; the maxtrix must be reversed
 (define multiply-vec-with-matrix
   (lambda (v matrix)
-    (if (matrix 'is-reversed?)
-        (do ([vec (make-vector (matrix 'rows))]
-             [i 0 (add1 i)])
-          ((= i (matrix 'rows)) vec)
-          (vector-set! vec i (multiply-two-vector v (matrix 'get-ith-rows i))))
-        (raise 'matrix-not-reversed))))
+    (do ([vec (make-vector (matrix 'rows))]
+         [i 0 (add1 i)])
+      ((= i (matrix 'rows)) vec)
+      (vector-set! vec i (multiply-two-vector v (matrix 'get-ith-rows i))))))
 
 (define multiply-two-matrix
   (lambda (matrixA matrixB)
-    (matrixB 'reverse)
-    (if (= (matrixA 'columns) (matrixB 'columns))
-        (let ([rows (matrixA 'rows)])
-          (do ([vec (make-vector rows)]
-               [i 0 (add1 i)])
-            ((= i rows) vec)
-            (vector-set! vec i (multiply-vec-with-matrix (matrixA 'get-ith-rows i) matrixB))))
-        (raise 'matrixA-columns-not-equal-matrixB-rows))))
+    (let ([transposed-matrixB (matrixB 'transpose)])
+      (if (= (matrixA 'columns) (transposed-matrixB 'columns))
+          (let ([rows (matrixA 'rows)])
+            (do ([vec (make-vector rows)]
+                 [i 0 (add1 i)])
+              ((= i rows) vec)
+              (vector-set! vec i (multiply-vec-with-matrix (matrixA 'get-ith-rows i) transposed-matrixB))))
+          (raise 'matrixA-columns-not-equal-matrixB-rows)))))
 
 
 (define matrix
   (lambda (lst-of-lst)
-   (let* ([m (list->vector (map list->vector lst-of-lst))]
+   (let* ([m (cond
+               [(list? lst-of-lst) (list->vector (map list->vector lst-of-lst))]
+               [(vector? lst-of-lst) lst-of-lst])]
           [rows (vector-length m)]
           [columns (vector-length (vector-ref m 0))]
-          [reversed? #f])
-     
-     (define is-reversed?
-       (lambda ()
-         reversed?))
+          [transposed? #f]
+          [transposed-matrix #f])
      
      (define get-ith-rows
         (lambda (i)
@@ -138,38 +135,40 @@
      (define show
        (lambda () (display (string-join (map (lambda (s) (string-join (map number->string s) " ")) (convert->lst-of-lst m)) "\n"))))
      
-     (define reverse
+     (define transpose
        (lambda ()
-         (let ([get-rev-vec
-                (lambda (j)
-                  (do ([vec (make-vector rows)]
-                       [i 0 (add1 i)])
-                    ((= i rows) vec)
-                    (vector-set! vec i (elem i j))))])
-           (do ([vec (make-vector columns)]
-                [j 0 (+ j 1)])
-             ((= j columns) (begin 
-                              (set! m vec) 
-                              (set! reversed? #t)
-                              (reset-rows)
-                              (reset-columns)
-                              dispatch))
-             (vector-set! vec j (get-rev-vec j))))))
+         (if transposed?
+             (matrix transposed-matrix)
+             (let ([get-rev-vec
+                    (lambda (j)
+                      (do ([vec (make-vector rows)]
+                           [i 0 (add1 i)])
+                        ((= i rows) vec)
+                        (vector-set! vec i (elem i j))))])
+               (do ([vec (make-vector columns)]
+                    [j 0 (+ j 1)])
+                 ((= j columns) (begin 
+                                  (set! transposed-matrix vec) 
+                                  (set! transposed? #t)
+                                  (reset-rows)
+                                  (reset-columns)
+                                  (matrix transposed-matrix)))
+                 (vector-set! vec j (get-rev-vec j)))))))
      
      (define dispatch
        (lambda (message . args) 
          (apply (case message
-                  ((is-reversed?) is-reversed?)
                   ((elem) elem)
                   ((show) show)
                   ((rows) get-rows)
                   ((get-ith-rows) get-ith-rows)
                   ((columns) get-columns)
-                  ((reverse) reverse))
+                  ((transpose) transpose))
               args)))
    dispatch)))
 
 (define m1 (matrix `((1 2) (3 4))))
 (define m2 (matrix `((2 4 6) (3 5 7))))
+((m2 'transpose) 'show)
 (m2 'show)
-(display (multiply-two-matrix m1 m2))
+;(display (multiply-two-matrix m1 m2))
